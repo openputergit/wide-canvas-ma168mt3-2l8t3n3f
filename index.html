@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deals & Offers Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f5f5;
+        }
+        .deal-card {
+            transition: transform 0.2s;
+        }
+        .deal-card:hover {
+            transform: translateY(-5px);
+        }
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+        }
+        .skeleton {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading hidden">
+        <div class="flex items-center justify-center">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8">Latest Deals & Offers</h1>
+        
+        <div class="mb-6">
+            <div class="flex flex-wrap gap-4 justify-center">
+                <button id="allDeals" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
+                    All Deals
+                </button>
+                <button id="couponsOnly" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+                    Coupons Only
+                </button>
+                <button id="dealsOnly" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+                    Deals Only
+                </button>
+            </div>
+        </div>
+
+        <div id="dealsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Deals will be dynamically inserted here -->
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = 'c291177d82720f6ba86a97869a17c310';
+        const API_URL = `https://feed.linkmydeals.com/getOffers/?API_KEY=${API_KEY}&format=json`;
+        let allOffers = [];
+        
+        const loading = document.getElementById('loading');
+        const dealsGrid = document.getElementById('dealsGrid');
+        const allDealsBtn = document.getElementById('allDeals');
+        const couponsOnlyBtn = document.getElementById('couponsOnly');
+        const dealsOnlyBtn = document.getElementById('dealsOnly');
+
+        function showLoading() {
+            loading.classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            loading.classList.add('hidden');
+        }
+
+        function createDealCard(offer) {
+            const card = document.createElement('div');
+            card.className = 'deal-card bg-white rounded-lg shadow-lg overflow-hidden';
+            
+            const imageUrl = offer.Image_Url || 'https://via.placeholder.com/300x200?text=No+Image';
+            
+            card.innerHTML = `
+                <div class="relative">
+                    <img src="${imageUrl}" alt="${offer.Title}" class="w-full h-48 object-cover">
+                    ${offer.Featured === 'Yes' ? '<span class="absolute top-2 right-2 bg-yellow-400 text-xs font-bold px-2 py-1 rounded-full">Featured</span>' : ''}
+                </div>
+                <div class="p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-semibold text-gray-600">${offer.Store}</span>
+                        <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">${offer.Type}</span>
+                    </div>
+                    <h3 class="text-lg font-semibold mb-2">${offer.Title}</h3>
+                    <p class="text-sm text-gray-600 mb-4 line-clamp-2">${offer.Description}</p>
+                    ${offer.Code ? 
+                        `<div class="flex items-center justify-between bg-gray-100 p-2 rounded mb-3">
+                            <code class="text-sm font-mono">${offer.Code}</code>
+                            <button onclick="copyCode('${offer.Code}')" class="text-blue-500 hover:text-blue-700">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>` : ''
+                    }
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-500">Ends: ${new Date(offer.End_Date * 1000).toLocaleDateString()}</span>
+                        <a href="${offer.URL}" target="_blank" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm">
+                            Get Offer
+                        </a>
+                    </div>
+                </div>
+            `;
+            return card;
+        }
+
+        function copyCode(code) {
+            navigator.clipboard.writeText(code).then(() => {
+                alert('Code copied to clipboard!');
+            });
+        }
+
+        function displayOffers(offers) {
+            dealsGrid.innerHTML = '';
+            offers.forEach(offer => {
+                dealsGrid.appendChild(createDealCard(offer));
+            });
+        }
+
+        function filterOffers(type = 'all') {
+            let filtered = allOffers;
+            if (type === 'coupons') {
+                filtered = allOffers.filter(offer => offer.Type.toLowerCase() === 'coupon code');
+            } else if (type === 'deals') {
+                filtered = allOffers.filter(offer => offer.Type.toLowerCase() === 'deal');
+            }
+            displayOffers(filtered);
+        }
+
+        // Event Listeners
+        allDealsBtn.addEventListener('click', () => {
+            allDealsBtn.classList.replace('bg-gray-200', 'bg-blue-500');
+            allDealsBtn.classList.replace('text-gray-700', 'text-white');
+            couponsOnlyBtn.classList.replace('bg-blue-500', 'bg-gray-200');
+            couponsOnlyBtn.classList.replace('text-white', 'text-gray-700');
+            dealsOnlyBtn.classList.replace('bg-blue-500', 'bg-gray-200');
+            dealsOnlyBtn.classList.replace('text-white', 'text-gray-700');
+            filterOffers('all');
+        });
+
+        couponsOnlyBtn.addEventListener('click', () => {
+            couponsOnlyBtn.classList.replace('bg-gray-200', 'bg-blue-500');
+            couponsOnlyBtn.classList.replace('text-gray-700', 'text-white');
+            allDealsBtn.classList.replace('bg-blue-500', 'bg-gray-200');
+            allDealsBtn.classList.replace('text-white', 'text-gray-700');
+            dealsOnlyBtn.classList.replace('bg-blue-500', 'bg-gray-200');
+            dealsOnlyBtn.classList.replace('text-white', 'text-gray-700');
+            filterOffers('coupons');
+        });
+
+        dealsOnlyBtn.addEventListener('click', () => {
+            dealsOnlyBtn.classList.replace('bg-gray-200', 'bg-blue-500');
+            dealsOnlyBtn.classList.replace('text-gray-700', 'text-white');
+            allDealsBtn.classList.replace('bg-blue-500', 'bg-gray-200');
+            allDealsBtn.classList.replace('text-white', 'text-gray-700');
+            couponsOnlyBtn.classList.replace('bg-blue-500', 'bg-gray-200');
+            couponsOnlyBtn.classList.replace('text-white', 'text-gray-700');
+            filterOffers('deals');
+        });
+
+        // Fetch data on load
+        async function fetchOffers() {
+            try {
+                showLoading();
+                const response = await fetch(API_URL);
+                const data = await response.json();
+                if (data.result) {
+                    allOffers = data.offers;
+                    displayOffers(allOffers);
+                } else {
+                    throw new Error('Failed to fetch offers');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                dealsGrid.innerHTML = `
+                    <div class="col-span-full text-center py-8">
+                        <p class="text-red-500">Failed to load offers. Please try again later.</p>
+                    </div>
+                `;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        fetchOffers();
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
